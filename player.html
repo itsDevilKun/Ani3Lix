@@ -8,84 +8,16 @@
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #121212);
-            color: var(--tg-theme-text-color, #ffffff);
-            margin: 0;
-            padding: 15px;
-        }
-        .btn-back {
-            background-color: var(--tg-theme-secondary-bg-color, #333);
-            color: var(--tg-theme-text-color, #fff);
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 15px;
-            font-size: 14px;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .ad-banner {
-            background-color: var(--tg-theme-secondary-bg-color, #2a2a2a);
-            color: #777;
-            width: 100%;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 15px 0;
-            border-radius: 8px;
-            font-size: 12px;
-            border: 1px dashed #555;
-        }
-        .player-wrapper {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            border-radius: 10px;
-            overflow: hidden; 
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-            position: relative; 
-            background-color: #000;
-        }
+        body { font-family: Arial, sans-serif; background-color: var(--tg-theme-bg-color, #121212); color: var(--tg-theme-text-color, #ffffff); margin: 0; padding: 15px; }
+        .btn-back { background-color: var(--tg-theme-secondary-bg-color, #333); color: var(--tg-theme-text-color, #fff); border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 15px; font-size: 14px; text-decoration: none; display: inline-block; }
+        .ad-banner { background-color: var(--tg-theme-secondary-bg-color, #2a2a2a); color: #777; width: 100%; height: 60px; display: flex; align-items: center; justify-content: center; margin: 15px 0; border-radius: 8px; font-size: 12px; border: 1px dashed #555; }
+        .player-wrapper { width: 100%; max-width: 800px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.6); position: relative; background-color: #000; }
         :root { --plyr-color-main: #ff4757; }
-        .ep-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin: 15px 0 5px 0;
-            color: #ff4757;
-        }
-        .anime-name {
-            font-size: 14px;
-            color: #ccc;
-            margin-bottom: 15px;
-        }
-        .skip-button {
-            position: absolute;
-            bottom: 70px;
-            right: 20px;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            border: 1px solid #ff4757;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            z-index: 10;
-            display: none; 
-            font-weight: bold;
-            font-size: 14px;
-            transition: 0.2s ease-in-out;
-        }
+        .ep-title { font-size: 20px; font-weight: bold; margin: 15px 0 5px 0; color: #ff4757; }
+        .anime-name { font-size: 14px; color: #ccc; margin-bottom: 15px; }
+        .skip-button { position: absolute; bottom: 70px; right: 20px; background-color: rgba(0, 0, 0, 0.8); color: white; border: 1px solid #ff4757; padding: 10px 20px; border-radius: 6px; cursor: pointer; z-index: 10; display: none; font-weight: bold; font-size: 14px; transition: 0.2s ease-in-out; }
         .skip-button:hover { background-color: #ff4757; }
-        .loading-text {
-            color: #fff;
-            padding: 40px;
-            text-align: center;
-            font-style: italic;
-            line-height: 1.5;
-        }
+        .loading-text { color: #fff; padding: 40px; text-align: center; font-style: italic; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -128,13 +60,31 @@
         async function fetchInitialData() {
             if (!animeId) return;
             try {
-                // 1. Get Title from Jikan
                 const jikanRes = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
                 const jikanData = await jikanRes.json();
                 const animeTitle = jikanData.data.title;
                 document.getElementById('display-name').innerText = animeTitle;
 
-                // 2. Fetch Skip Times
+                // 🚀 NEW: Silent Watch History Tracker
+                try {
+                    const coverImage = jikanData.data.images.jpg.large_image_url || jikanData.data.images.jpg.image_url;
+                    let history = JSON.parse(localStorage.getItem('ani3lix_history')) || [];
+                    
+                    // Remove duplicate if they are re-watching, so it moves to the front of the list
+                    history = history.filter(h => h.id !== animeId);
+                    
+                    // Add the new episode to the front of the database
+                    history.unshift({ id: animeId, title: animeTitle, image: coverImage, ep: episodeNum });
+                    
+                    // Keep the database clean by only saving the last 15 shows
+                    if (history.length > 15) history.pop();
+                    
+                    localStorage.setItem('ani3lix_history', JSON.stringify(history));
+                } catch (e) {
+                    console.log("History save failed");
+                }
+
+                // Fetch Skip Times
                 fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
                     .then(res => res.json())
                     .then(data => {
@@ -144,7 +94,7 @@
                         }
                     }).catch(e => console.log("No skip times found."));
 
-                // 3. Trigger The New Zoro Scraper
+                // Trigger The Zoro Scraper
                 fetchZoroStream(animeTitle, episodeNum);
 
             } catch (error) {
@@ -153,44 +103,30 @@
             }
         }
 
-        // --- NEW ZORO (HiAnime) INTEGRATION ---
         async function fetchZoroStream(title, epNum) {
-            // Using a highly stable, community-hosted API instead of local proxy
             const BASE_URL = "https://api-consumet.org/anime/zoro";
-
             try {
-                // Step A: Search Zoro for the Anime
                 const searchRes = await fetch(`${BASE_URL}/${encodeURIComponent(title)}`);
                 if (!searchRes.ok) throw new Error("Servers are heavily loaded. Try again later.");
                 const searchData = await searchRes.json();
                 
-                if (!searchData.results || searchData.results.length === 0) {
-                    throw new Error("Anime not found on Zoro stream servers.");
-                }
+                if (!searchData.results || searchData.results.length === 0) throw new Error("Anime not found on Zoro.");
                 const zoroId = searchData.results[0].id;
 
-                // Step B: Fetch the Episode List (Handling both potential URL structures)
                 let infoRes = await fetch(`${BASE_URL}/info?id=${zoroId}`);
                 if (!infoRes.ok) infoRes = await fetch(`${BASE_URL}/info/${zoroId}`);
-                
                 const infoData = await infoRes.json();
+                
                 const episodeData = infoData.episodes.find(e => parseInt(e.number) === parseInt(epNum));
                 if (!episodeData) throw new Error("Episode not found.");
 
-                // Step C: Fetch the raw streaming sources (.m3u8)
                 let streamRes = await fetch(`${BASE_URL}/watch?episodeId=${episodeData.id}`);
                 if (!streamRes.ok) streamRes = await fetch(`${BASE_URL}/watch/${episodeData.id}`);
-                
                 const streamData = await streamRes.json();
 
-                if (!streamData.sources || streamData.sources.length === 0) {
-                    throw new Error("No streamable video files found.");
-                }
+                if (!streamData.sources || streamData.sources.length === 0) throw new Error("No streamable video files found.");
 
-                // Step D: Grab the highest quality link
                 const bestSource = streamData.sources.find(s => s.quality === '1080p' || s.quality === 'auto' || s.quality === 'default') || streamData.sources[0];
-
-                // Fire up the player
                 initializePlayer(bestSource.url);
 
             } catch (error) {
@@ -218,17 +154,12 @@
                 player = new Plyr(videoElement, { seekTime: 10 });
             }
 
-            // Skip Button Logic
             player.on('timeupdate', () => {
                 const time = player.currentTime;
                 if (skipTimes.op && time >= skipTimes.op.startTime && time <= skipTimes.op.endTime) {
-                    skipBtn.style.display = 'block';
-                    skipBtn.innerText = 'Skip Intro';
-                    skipBtn.onclick = () => { player.currentTime = skipTimes.op.endTime; };
+                    skipBtn.style.display = 'block'; skipBtn.innerText = 'Skip Intro'; skipBtn.onclick = () => { player.currentTime = skipTimes.op.endTime; };
                 } else if (skipTimes.ed && time >= skipTimes.ed.startTime && time <= skipTimes.ed.endTime) {
-                    skipBtn.style.display = 'block';
-                    skipBtn.innerText = 'Skip Ending';
-                    skipBtn.onclick = () => { player.currentTime = skipTimes.ed.endTime; };
+                    skipBtn.style.display = 'block'; skipBtn.innerText = 'Skip Ending'; skipBtn.onclick = () => { player.currentTime = skipTimes.ed.endTime; };
                 } else {
                     skipBtn.style.display = 'none';
                 }

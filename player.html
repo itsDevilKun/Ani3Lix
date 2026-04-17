@@ -84,6 +84,7 @@
             padding: 40px;
             text-align: center;
             font-style: italic;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -97,7 +98,7 @@
     <div class="ad-banner">Top Video Player Ad Space</div>
 
     <div class="player-wrapper">
-        <div id="loading-indicator" class="loading-text">Scraping stream links from Consumet...</div>
+        <div id="loading-indicator" class="loading-text">Searching multi-provider streams via Anify...<br>Please wait a moment.</div>
         <video id="video-player" controls crossorigin playsinline style="display:none;"></video>
         <button id="skip-btn" class="skip-button">Skip Intro</button>
     </div>
@@ -124,17 +125,16 @@
         if (animeId) document.getElementById('back-btn').href = `details.html?id=${animeId}`;
         if (episodeNum) document.getElementById('display-ep').innerText = `Episode ${episodeNum}`;
 
-        // Phase 1: Fetch Metadata and Skip Times
         async function fetchInitialData() {
             if (!animeId) return;
             try {
-                // Get Title from Jikan
+                // 1. Get Title from Jikan
                 const jikanRes = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
                 const jikanData = await jikanRes.json();
                 const animeTitle = jikanData.data.title;
                 document.getElementById('display-name').innerText = animeTitle;
 
-                // Get Skip Times in the background
+                // 2. Fetch Skip Times quietly in the background
                 fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
                     .then(res => res.json())
                     .then(data => {
@@ -144,50 +144,61 @@
                         }
                     }).catch(e => console.log("No skip times found."));
 
-                // Trigger the Consumet Stream Scraper
-                fetchRealStream(animeTitle, episodeNum);
+                // 3. Trigger the Anify Stream Scraper
+                fetchAnifyStream(animeTitle, episodeNum);
 
             } catch (error) {
                 document.getElementById('display-name').innerText = "Data load failed.";
+                loadingText.innerText = "Error loading anime metadata.";
             }
         }
 
-        // Phase 2: The Consumet Bridge
-        async function fetchRealStream(title, epNum) {
+        // NEW: The Anify Bridge
+        async function fetchAnifyStream(title, epNum) {
             try {
-                // 1. Search Consumet for the Anime ID
-                const searchRes = await fetch(`https://api.consumet.org/anime/gogoanime/${encodeURIComponent(title)}`);
+                // Step A: Search Anify database for the Anime
+                const searchRes = await fetch(`https://api.anify.tv/search?query=${encodeURIComponent(title)}&type=anime`);
                 const searchData = await searchRes.json();
                 
-                if (!searchData.results || searchData.results.length === 0) {
-                    throw new Error("Anime not found on stream servers.");
+                if (!searchData || searchData.length === 0) {
+                    throw new Error("Anime not found in Anify database.");
                 }
-                const consumetAnimeId = searchData.results[0].id;
+                const anifyId = searchData[0].id; // Grab the best match
 
-                // 2. Fetch the Episode List to get the exact Episode ID
-                const infoRes = await fetch(`https://api.consumet.org/anime/gogoanime/info/${consumetAnimeId}`);
-                const infoData = await infoRes.json();
+                // Step B: Get all available episodes and providers
+                const epRes = await fetch(`https://api.anify.tv/episodes/${anifyId}`);
+                const epData = await epRes.json();
                 
-                const episodeData = infoData.episodes.find(e => e.number === parseInt(epNum));
-                if (!episodeData) throw new Error("Episode not found.");
+                if (!epData || epData.length === 0) {
+                    throw new Error("No providers found for this anime.");
+                }
 
-                // 3. Fetch the actual .m3u8 streaming links
-                const streamRes = await fetch(`https://api.consumet.org/anime/gogoanime/watch/${episodeData.id}`);
-                const streamData = await streamRes.json();
+                // Step C: Select a provider (we default to the first available one that isn't empty)
+                const provider = epData.find(p => p.episodes.length > 0) || epData[0];
+                const episode = provider.episodes.find(e => e.number === parseInt(epNum));
 
-                // 4. Find the best quality link
-                const source = streamData.sources.find(s => s.quality === 'default' || s.quality === '1080p') || streamData.sources[0];
+                if (!episode) throw new Error("Episode number not found.");
 
-                // Initialize the player with the real URL
-                initializePlayer(source.url);
+                // Step D: Fetch the raw streaming sources (.m3u8)
+                const sourceRes = await fetch(`https://api.anify.tv/sources?providerId=${provider.providerId}&watchId=${encodeURIComponent(episode.id)}&episodeNumber=${epNum}&id=${anifyId}`);
+                const sourceData = await sourceRes.json();
+
+                if (!sourceData.sources || sourceData.sources.length === 0) {
+                    throw new Error("No streamable sources found.");
+                }
+
+                // Grab the highest quality 'auto' or '1080p' link
+                const bestSource = sourceData.sources.find(s => s.quality === 'auto' || s.quality === '1080p') || sourceData.sources[0];
+
+                // Fire up the player
+                initializePlayer(bestSource.url);
 
             } catch (error) {
-                loadingText.innerText = "Error: Could not fetch stream. Server might be down.";
+                loadingText.innerText = "Error: " + error.message + " Try another anime.";
                 console.error(error);
             }
         }
 
-        // Phase 3: Start the Video
         function initializePlayer(streamUrl) {
             loadingText.style.display = 'none';
             videoElement.style.display = 'block';
@@ -207,7 +218,7 @@
                 player = new Plyr(videoElement, { seekTime: 10 });
             }
 
-            // Skip Button Logic
+            // Skip Button Overlay Logic
             player.on('timeupdate', () => {
                 const time = player.currentTime;
                 if (skipTimes.op && time >= skipTimes.op.startTime && time <= skipTimes.op.endTime) {

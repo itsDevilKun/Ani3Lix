@@ -30,7 +30,7 @@
     <div class="ad-banner">Top Video Player Ad Space</div>
 
     <div class="player-wrapper" id="player-wrapper">
-        <div id="loading-indicator" class="loading-text">Bypassing security & establishing secure stream...</div>
+        <div id="loading-indicator" class="loading-text">Establishing secure connection...</div>
         <video id="video-player" controls crossorigin playsinline style="display:none;"></video>
         <button id="skip-btn" class="skip-button">Skip Intro</button>
     </div>
@@ -57,28 +57,47 @@
         if (animeId) document.getElementById('back-btn').href = `details.html?id=${animeId}`;
         if (episodeNum) document.getElementById('display-ep').innerText = `Episode ${episodeNum}`;
 
-        // 🚀 THE BYPASS: Safely route around ISP blocks
+        // 🚀 THE ULTIMATE BYPASS: Multi-Proxy Rotation
         async function safeFetch(url) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Blocked");
-                return await response.json();
-            } catch (error) {
-                const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-                const proxyResponse = await fetch(proxyUrl);
-                return await proxyResponse.json();
+            const proxies = [
+                '', // 1. Try direct connection first
+                'https://api.allorigins.win/raw?url=', // 2. Fallback Proxy 1
+                'https://corsproxy.io/?', // 3. Fallback Proxy 2
+                'https://api.codetabs.com/v1/proxy/?quest=' // 4. Fallback Proxy 3
+            ];
+
+            for (let proxy of proxies) {
+                try {
+                    const targetUrl = proxy ? proxy + encodeURIComponent(url) : url;
+                    const response = await fetch(targetUrl);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Verify it's actually valid JSON, not an HTML error page
+                        if (data) return data; 
+                    }
+                } catch (error) {
+                    console.log(`Connection to ${proxy || 'Direct'} failed. Rotating...`);
+                }
             }
+            throw new Error("All proxies and direct connections were blocked.");
         }
 
         async function fetchInitialData() {
             if (!animeId) return;
+            
+            let animeTitle = "Unknown Anime";
+            let aniId = null;
+            let gogoId = null;
+
+            // ISOLATED BLOCK 1: Jikan Metadata
             try {
-                // 1. Get Title and Cover from Jikan
+                loadingText.innerText = "Fetching metadata...";
                 const jikanData = await safeFetch(`https://api.jikan.moe/v4/anime/${animeId}`);
-                const animeTitle = jikanData.data.title;
+                animeTitle = jikanData.data.title;
                 document.getElementById('display-name').innerText = animeTitle;
 
-                // 2. Silent Watch History Tracker
+                // Watch History Tracker
                 try {
                     const coverImage = jikanData.data.images.jpg.large_image_url || jikanData.data.images.jpg.image_url;
                     let history = JSON.parse(localStorage.getItem('ani3lix_history')) || [];
@@ -86,77 +105,70 @@
                     history.unshift({ id: animeId, title: animeTitle, image: coverImage, ep: episodeNum });
                     if (history.length > 15) history.pop();
                     localStorage.setItem('ani3lix_history', JSON.stringify(history));
-                } catch (e) {
-                    console.log("History save failed");
-                }
+                } catch (e) { console.log("History save failed"); }
 
-                // 3. The MALSync Bridge: Find the exact AniList and Gogoanime IDs
+            } catch (error) {
+                loadingText.innerText = "Error: Jikan API completely blocked by ISP.";
+                return; // If we can't get the title, we must stop here.
+            }
+
+            // ISOLATED BLOCK 2: MALSync Mapping
+            try {
+                loadingText.innerText = "Mapping video sources...";
                 const malSyncData = await safeFetch(`https://api.malsync.moe/mal/anime/${animeId}`);
-                const aniId = malSyncData.aniId;
-                let gogoId = null;
-                
+                aniId = malSyncData.aniId;
                 if (malSyncData.Sites && malSyncData.Sites.Gogoanime) {
                     gogoId = Object.keys(malSyncData.Sites.Gogoanime)[0];
                 }
-                
-                // Formulate the exact episode string (e.g., "one-piece-episode-1")
-                const episodeId = gogoId ? `${gogoId}-episode-${episodeNum}` : null;
-
-                // 4. Try Primary Engine: AMVSTR API for raw .m3u8 stream
-                try {
-                    if (!episodeId) throw new Error("No Gogoanime ID mapping found.");
-                    const streamData = await safeFetch(`https://api.amvstr.me/api/v2/stream/${episodeId}`);
-                    
-                    if (streamData && streamData.stream && streamData.stream.multi && streamData.stream.multi.main) {
-                        const m3u8Url = streamData.stream.multi.main.url;
-                        initializePlayer(m3u8Url);
-                    } else {
-                        throw new Error("Raw stream not available.");
-                    }
-                } catch (apiError) {
-                    // 5. The Auto-Fallback: If the raw scraper fails, instantly deploy the Iframe Embed
-                    console.log("Raw extraction blocked. Deploying Iframe Fallback...", apiError);
-                    deployIframeFallback(aniId, episodeId, episodeNum);
-                }
-
-                // Fetch Skip Times in the background
-                fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.found) {
-                            if (data.results.op) skipTimes.op = data.results.op.interval;
-                            if (data.results.ed) skipTimes.ed = data.results.ed.interval;
-                        }
-                    }).catch(e => console.log("No skip times found."));
-
             } catch (error) {
-                document.getElementById('display-name').innerText = "Data load failed.";
-                loadingText.innerText = "Critical error loading episode metadata.";
+                console.log("MALSync failed. Continuing to fallback mode.");
             }
+
+            // ISOLATED BLOCK 3: Stream Deployment
+            const episodeId = gogoId ? `${gogoId}-episode-${episodeNum}` : null;
+            
+            try {
+                if (!episodeId) throw new Error("No Gogoanime ID found.");
+                loadingText.innerText = "Extracting raw video link...";
+                const streamData = await safeFetch(`https://api.amvstr.me/api/v2/stream/${episodeId}`);
+                
+                if (streamData && streamData.stream && streamData.stream.multi && streamData.stream.multi.main) {
+                    initializePlayer(streamData.stream.multi.main.url);
+                } else {
+                    throw new Error("Raw stream not found.");
+                }
+            } catch (apiError) {
+                console.log("Raw extraction failed. Deploying Iframe Fallback...");
+                deployIframeFallback(aniId, episodeId, episodeNum, animeTitle);
+            }
+
+            // Background Skip Times
+            fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.found) {
+                        if (data.results.op) skipTimes.op = data.results.op.interval;
+                        if (data.results.ed) skipTimes.ed = data.results.ed.interval;
+                    }
+                }).catch(e => console.log("No skip times found."));
         }
 
         // --- THE IFRAME FAILSAFE ---
-        function deployIframeFallback(aniId, episodeId, epNum) {
+        function deployIframeFallback(aniId, episodeId, epNum, title) {
             const wrapper = document.getElementById('player-wrapper');
-            
-            // Primary fallback uses Embtaku (Gogoanime's native high-speed player)
-            // Secondary fallback uses Vidplus (AniList ID based embed)
-            const iframeSrc = episodeId 
-                ? `https://embtaku.pro/streaming.php?id=${episodeId}` 
-                : `https://player.vidplus.to/embed/anime/${aniId}/${epNum}?dub=false`;
+            let iframeSrc = "";
+
+            if (episodeId) {
+                iframeSrc = `https://embtaku.pro/streaming.php?id=${episodeId}`;
+            } else if (aniId) {
+                iframeSrc = `https://player.vidplus.to/embed/anime/${aniId}/${epNum}?dub=false`;
+            } else {
+                // The ultimate fallback: Let the user search directly if all databases fail
+                wrapper.innerHTML = `<div class="loading-text">Stream not automatically found. <br><br> <a href="https://hianime.to/search?keyword=${encodeURIComponent(title)}" target="_blank" style="color:#ff4757;">Search manually here</a></div>`;
+                return;
+            }
                 
-            // Overwrites the broken <video> tag with a fully functional embedded player
-            wrapper.innerHTML = `
-                <iframe 
-                    src="${iframeSrc}" 
-                    width="100%" 
-                    height="450" 
-                    frameborder="0" 
-                    allowfullscreen
-                    scrolling="no"
-                    style="border-radius: 10px; background-color: #000;"
-                ></iframe>
-            `;
+            wrapper.innerHTML = `<iframe src="${iframeSrc}" width="100%" height="450" frameborder="0" allowfullscreen scrolling="no" style="border-radius: 10px; background-color: #000;"></iframe>`;
         }
 
         function initializePlayer(streamUrl) {

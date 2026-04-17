@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ani3Lix - Home</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
@@ -48,6 +48,7 @@
         .search-wrapper {
             display: flex;
             gap: 8px;
+            align-items: center;
         }
         .search-input {
             padding: 8px 12px;
@@ -69,9 +70,12 @@
             color: white;
             border: none;
             border-radius: 20px;
-            padding: 0 15px;
+            padding: 8px 15px;
             cursor: pointer;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* --- DYNAMIC HERO BANNER --- */
@@ -208,11 +212,11 @@
         /* Search Results Area */
         #search-results-section { 
             display: none; 
-            padding: 80px 20px 20px 20px; /* Spaced down for header */
+            padding: 80px 20px 20px 20px; 
         }
         .search-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
             gap: 15px;
             margin-top: 15px;
         }
@@ -233,6 +237,49 @@
             font-size: 12px;
             margin-top: 20px;
             border-top: 1px solid #222;
+        }
+
+        /* --- MOBILE RESPONSIVENESS (THE FIX) --- */
+        @media (max-width: 480px) {
+            .header-container {
+                padding: 12px 15px;
+            }
+            .logo {
+                font-size: 20px; /* Shrinks the logo */
+            }
+            .search-wrapper {
+                gap: 5px;
+            }
+            .search-input {
+                width: 100px; /* Base width shrunk for mobile */
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+            .search-input:focus {
+                width: 135px; /* Expands slightly less on focus */
+            }
+            .search-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            .hero-title {
+                font-size: 24px; /* Scaled down hero text */
+            }
+            .hero-synopsis {
+                -webkit-line-clamp: 2; /* Truncates to 2 lines instead of 3 */
+                font-size: 12px;
+            }
+            .hero-play-btn {
+                padding: 8px 18px;
+                font-size: 14px;
+            }
+            .catalog-container {
+                padding: 0 15px;
+            }
+            .anime-card {
+                min-width: 115px;
+                max-width: 115px;
+            }
         }
     </style>
 </head>

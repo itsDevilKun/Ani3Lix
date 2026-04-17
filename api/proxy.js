@@ -6,7 +6,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Your Vercel server securely fetches the data, ignoring browser CORS blocks
         const response = await fetch(targetUrl, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -20,7 +19,6 @@ export default async function handler(req, res) {
 
         const data = await response.json();
         
-        // Grant permission for your frontend to read this data
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
         

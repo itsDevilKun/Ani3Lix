@@ -239,47 +239,19 @@
             border-top: 1px solid #222;
         }
 
-        /* --- MOBILE RESPONSIVENESS (THE FIX) --- */
+        /* --- MOBILE RESPONSIVENESS --- */
         @media (max-width: 480px) {
-            .header-container {
-                padding: 12px 15px;
-            }
-            .logo {
-                font-size: 20px; /* Shrinks the logo */
-            }
-            .search-wrapper {
-                gap: 5px;
-            }
-            .search-input {
-                width: 100px; /* Base width shrunk for mobile */
-                padding: 6px 10px;
-                font-size: 13px;
-            }
-            .search-input:focus {
-                width: 135px; /* Expands slightly less on focus */
-            }
-            .search-btn {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-            .hero-title {
-                font-size: 24px; /* Scaled down hero text */
-            }
-            .hero-synopsis {
-                -webkit-line-clamp: 2; /* Truncates to 2 lines instead of 3 */
-                font-size: 12px;
-            }
-            .hero-play-btn {
-                padding: 8px 18px;
-                font-size: 14px;
-            }
-            .catalog-container {
-                padding: 0 15px;
-            }
-            .anime-card {
-                min-width: 115px;
-                max-width: 115px;
-            }
+            .header-container { padding: 12px 15px; }
+            .logo { font-size: 20px; }
+            .search-wrapper { gap: 5px; }
+            .search-input { width: 100px; padding: 6px 10px; font-size: 13px; }
+            .search-input:focus { width: 135px; }
+            .search-btn { padding: 6px 12px; font-size: 12px; }
+            .hero-title { font-size: 24px; }
+            .hero-synopsis { -webkit-line-clamp: 2; font-size: 12px; }
+            .hero-play-btn { padding: 8px 18px; font-size: 14px; }
+            .catalog-container { padding: 0 15px; }
+            .anime-card { min-width: 115px; max-width: 115px; }
         }
     </style>
 </head>
@@ -341,6 +313,22 @@
         tg.ready();
         tg.expand();
 
+        // 🚀 THE BYPASS: Smart Fetching to dodge ISP blocks
+        async function safeFetch(url) {
+            try {
+                // Attempt 1: Direct Connection
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Blocked or Rate Limited");
+                return await response.json();
+            } catch (error) {
+                // Attempt 2: Bypassing the block via a raw proxy
+                console.log("Direct connection failed. Rerouting through proxy...");
+                const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+                const proxyResponse = await fetch(proxyUrl);
+                return await proxyResponse.json();
+            }
+        }
+
         // 1. Function to build the premium cards
         function createCard(anime) {
             const card = document.createElement('div');
@@ -359,43 +347,45 @@
             return card;
         }
 
-        // 2. Fetch API sequentially to avoid rate limits
+        // 2. Fetch API sequentially using the Failover Proxy
         async function buildHomepage() {
             try {
-                // Fetch Trending (We use the #1 spot for the Hero Banner)
-                const trendRes = await fetch('https://api.jikan.moe/v4/top/anime?filter=bypopularity&limit=15');
-                const trendData = await trendRes.json();
+                // Now using safeFetch() instead of standard fetch()
+                const trendData = await safeFetch('https://api.jikan.moe/v4/top/anime?filter=bypopularity&limit=15');
                 
-                const heroAnime = trendData.data[0]; // #1 Anime
-                document.getElementById('hero-banner').style.backgroundImage = `url('${heroAnime.images.webp.large_image_url}')`;
-                document.getElementById('hero-title').innerText = heroAnime.title;
-                document.getElementById('hero-synopsis').innerText = heroAnime.synopsis || "No synopsis available.";
-                document.getElementById('hero-play-btn').onclick = () => { window.location.href = `details.html?id=${heroAnime.mal_id}`; };
+                if (trendData && trendData.data) {
+                    const heroAnime = trendData.data[0]; 
+                    document.getElementById('hero-banner').style.backgroundImage = `url('${heroAnime.images.webp.large_image_url}')`;
+                    document.getElementById('hero-title').innerText = heroAnime.title;
+                    document.getElementById('hero-synopsis').innerText = heroAnime.synopsis || "No synopsis available.";
+                    document.getElementById('hero-play-btn').onclick = () => { window.location.href = `details.html?id=${heroAnime.mal_id}`; };
 
-                const trendContainer = document.getElementById('trending-container');
-                // Fill the row with the rest of the trending anime
-                trendData.data.slice(1).forEach(anime => trendContainer.appendChild(createCard(anime)));
+                    const trendContainer = document.getElementById('trending-container');
+                    trendData.data.slice(1).forEach(anime => trendContainer.appendChild(createCard(anime)));
+                }
 
-                // Add slight delay to respect Jikan API limits
                 setTimeout(async () => {
-                    const airRes = await fetch('https://api.jikan.moe/v4/seasons/now?limit=10');
-                    const airData = await airRes.json();
-                    const airContainer = document.getElementById('airing-container');
-                    airData.data.forEach(anime => airContainer.appendChild(createCard(anime)));
+                    const airData = await safeFetch('https://api.jikan.moe/v4/seasons/now?limit=10');
+                    if (airData && airData.data) {
+                        const airContainer = document.getElementById('airing-container');
+                        airData.data.forEach(anime => airContainer.appendChild(createCard(anime)));
+                    }
                 }, 500);
 
                 setTimeout(async () => {
-                    const classicRes = await fetch('https://api.jikan.moe/v4/top/anime?type=tv&limit=10');
-                    const classicData = await classicRes.json();
-                    const classicContainer = document.getElementById('classics-container');
-                    classicData.data.forEach(anime => classicContainer.appendChild(createCard(anime)));
+                    const classicData = await safeFetch('https://api.jikan.moe/v4/top/anime?type=tv&limit=10');
+                    if (classicData && classicData.data) {
+                        const classicContainer = document.getElementById('classics-container');
+                        classicData.data.forEach(anime => classicContainer.appendChild(createCard(anime)));
+                    }
                 }, 1000);
 
                 setTimeout(async () => {
-                    const upRes = await fetch('https://api.jikan.moe/v4/seasons/upcoming?limit=10');
-                    const upData = await upRes.json();
-                    const upContainer = document.getElementById('upcoming-container');
-                    upData.data.forEach(anime => upContainer.appendChild(createCard(anime)));
+                    const upData = await safeFetch('https://api.jikan.moe/v4/seasons/upcoming?limit=10');
+                    if (upData && upData.data) {
+                        const upContainer = document.getElementById('upcoming-container');
+                        upData.data.forEach(anime => upContainer.appendChild(createCard(anime)));
+                    }
                 }, 1500);
 
             } catch (error) {
@@ -403,31 +393,30 @@
             }
         }
 
-        // 3. Search Engine Logic
+        // 3. Search Engine Logic upgraded with Proxy
         async function executeSearch() {
             const query = document.getElementById('search-box').value.trim();
             if (!query) return;
 
             document.getElementById('home-content').style.display = 'none';
             document.getElementById('search-results-section').style.display = 'block';
-            window.scrollTo(0, 0); // Scroll to top for results
+            window.scrollTo(0, 0); 
             
             const container = document.getElementById('search-container');
             container.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1 / -1;">Searching database...</p>';
 
             try {
-                const response = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&limit=18&sfw=true`);
-                const data = await response.json();
+                const data = await safeFetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&limit=18&sfw=true`);
                 container.innerHTML = '';
 
-                if (data.data.length === 0) {
+                if (!data || !data.data || data.data.length === 0) {
                     container.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1 / -1;">No anime found.</p>';
                     return;
                 }
 
                 data.data.forEach(anime => container.appendChild(createCard(anime)));
             } catch (error) {
-                container.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1 / -1;">Error loading results.</p>';
+                container.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1 / -1;">Error loading results. Proxy might be overloaded.</p>';
             }
         }
 

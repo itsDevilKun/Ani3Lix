@@ -7,252 +7,38 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <style>
-        :root {
-            --main-red: #ff4757;
-            --bg-color: #0f0f0f;
-            --card-bg: #1e1e1e;
-            --text-main: #ffffff;
-            --text-muted: #aaaaaa;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 0;
-            text-align: left;
-            overflow-x: hidden;
-        }
-
-        /* --- HEADER & SEARCH --- */
-        .header-container {
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
-            position: absolute;
-            top: 0;
-            width: 100%;
-            box-sizing: border-box;
-            z-index: 100;
-        }
-        .logo {
-            font-size: 28px;
-            font-weight: 900;
-            color: var(--main-red);
-            letter-spacing: 1px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        .search-wrapper {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        .search-input {
-            padding: 8px 12px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background-color: rgba(0, 0, 0, 0.6);
-            color: white;
-            outline: none;
-            width: 150px;
-            transition: width 0.3s ease;
-        }
-        .search-input:focus {
-            width: 200px;
-            border-color: var(--main-red);
-            background-color: rgba(0, 0, 0, 0.8);
-        }
-        .search-btn {
-            background-color: var(--main-red);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 8px 15px;
-            cursor: pointer;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* --- DYNAMIC HERO BANNER --- */
-        .hero-banner {
-            width: 100%;
-            height: 55vh;
-            background-size: cover;
-            background-position: center;
-            position: relative;
-            display: flex;
-            align-items: flex-end;
-            border-bottom: 2px solid #222;
-        }
-        .hero-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(to top, var(--bg-color) 0%, rgba(15,15,15,0.4) 50%, transparent 100%);
-        }
-        .hero-content {
-            position: relative;
-            padding: 20px;
-            z-index: 10;
-            max-width: 600px;
-        }
-        .hero-title {
-            font-size: 32px;
-            font-weight: 900;
-            margin: 0 0 10px 0;
-            text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
-        }
-        .hero-synopsis {
-            font-size: 13px;
-            color: #ddd;
-            margin-bottom: 15px;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-        }
-        .hero-play-btn {
-            background-color: var(--main-red);
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.4);
-            transition: transform 0.2s;
-        }
+        :root { --main-red: #ff4757; --bg-color: #0f0f0f; --card-bg: #1e1e1e; --text-main: #ffffff; --text-muted: #aaaaaa; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; text-align: left; overflow-x: hidden; }
+        .header-container { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); position: absolute; top: 0; width: 100%; box-sizing: border-box; z-index: 100; }
+        .logo { font-size: 28px; font-weight: 900; color: var(--main-red); letter-spacing: 1px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .search-wrapper { display: flex; gap: 8px; align-items: center; }
+        .search-input { padding: 8px 12px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background-color: rgba(0, 0, 0, 0.6); color: white; outline: none; width: 150px; transition: width 0.3s ease; }
+        .search-input:focus { width: 200px; border-color: var(--main-red); background-color: rgba(0, 0, 0, 0.8); }
+        .search-btn { background-color: var(--main-red); color: white; border: none; border-radius: 20px; padding: 8px 15px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .hero-banner { width: 100%; height: 55vh; background-size: cover; background-position: center; position: relative; display: flex; align-items: flex-end; border-bottom: 2px solid #222; }
+        .hero-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--bg-color) 0%, rgba(15,15,15,0.4) 50%, transparent 100%); }
+        .hero-content { position: relative; padding: 20px; z-index: 10; max-width: 600px; }
+        .hero-title { font-size: 32px; font-weight: 900; margin: 0 0 10px 0; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
+        .hero-synopsis { font-size: 13px; color: #ddd; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
+        .hero-play-btn { background-color: var(--main-red); color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.4); transition: transform 0.2s; }
         .hero-play-btn:active { transform: scale(0.95); }
-
-        /* --- AD ZONES --- */
-        .ad-banner {
-            background-color: #1a1a1a;
-            color: #555;
-            width: calc(100% - 40px);
-            height: 50px;
-            margin: 20px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            font-size: 11px;
-            border: 1px dashed #333;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* --- CATALOG SECTIONS --- */
-        .catalog-container {
-            padding: 0 20px;
-        }
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin: 25px 0 10px 0;
-        }
-        .section-title {
-            font-size: 18px;
-            font-weight: bold;
-            border-left: 4px solid var(--main-red);
-            padding-left: 10px;
-        }
-        
-        .anime-scroll-row {
-            display: flex;
-            overflow-x: auto;
-            gap: 15px;
-            padding-bottom: 15px;
-            scrollbar-width: none;
-        }
+        .ad-banner { background-color: #1a1a1a; color: #555; width: calc(100% - 40px); height: 50px; margin: 20px auto; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 11px; border: 1px dashed #333; text-transform: uppercase; letter-spacing: 1px; }
+        .catalog-container { padding: 0 20px; }
+        .section-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 25px 0 10px 0; }
+        .section-title { font-size: 18px; font-weight: bold; border-left: 4px solid var(--main-red); padding-left: 10px; }
+        .anime-scroll-row { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 15px; scrollbar-width: none; }
         .anime-scroll-row::-webkit-scrollbar { display: none; }
-        
-        /* Premium Card Styling */
-        .anime-card {
-            min-width: 130px;
-            max-width: 130px;
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative;
-        }
-        .anime-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.5);
-        }
-        .anime-cover {
-            width: 100%;
-            aspect-ratio: 2/3;
-            object-fit: cover;
-        }
-        .anime-info {
-            padding: 8px;
-        }
-        .anime-title {
-            font-size: 13px;
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .anime-year {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 3px;
-        }
-
-        /* Search Results Area */
-        #search-results-section { 
-            display: none; 
-            padding: 80px 20px 20px 20px; 
-        }
-        .search-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-        .clear-btn {
-            font-size: 12px;
-            color: var(--text-muted);
-            cursor: pointer;
-            background: #222;
-            padding: 4px 10px;
-            border-radius: 12px;
-        }
-
-        /* --- FOOTER --- */
-        .footer {
-            text-align: center;
-            padding: 30px 20px;
-            color: #666;
-            font-size: 12px;
-            margin-top: 20px;
-            border-top: 1px solid #222;
-        }
-
-        /* --- MOBILE RESPONSIVENESS --- */
-        @media (max-width: 480px) {
-            .header-container { padding: 12px 15px; }
-            .logo { font-size: 20px; }
-            .search-wrapper { gap: 5px; }
-            .search-input { width: 100px; padding: 6px 10px; font-size: 13px; }
-            .search-input:focus { width: 135px; }
-            .search-btn { padding: 6px 12px; font-size: 12px; }
-            .hero-title { font-size: 24px; }
-            .hero-synopsis { -webkit-line-clamp: 2; font-size: 12px; }
-            .hero-play-btn { padding: 8px 18px; font-size: 14px; }
-            .catalog-container { padding: 0 15px; }
-            .anime-card { min-width: 115px; max-width: 115px; }
-        }
+        .anime-card { min-width: 130px; max-width: 130px; background-color: var(--card-bg); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease; position: relative; }
+        .anime-card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.5); }
+        .anime-cover { width: 100%; aspect-ratio: 2/3; object-fit: cover; }
+        .anime-info { padding: 8px; }
+        .anime-title { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .anime-year { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+        #search-results-section { display: none; padding: 80px 20px 20px 20px; }
+        .search-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; margin-top: 15px; }
+        .clear-btn { font-size: 12px; color: var(--text-muted); cursor: pointer; background: #222; padding: 4px 10px; border-radius: 12px; }
+        .footer { text-align: center; padding: 30px 20px; color: #666; font-size: 12px; margin-top: 20px; border-top: 1px solid #222; }
+        @media (max-width: 480px) { .header-container { padding: 12px 15px; } .logo { font-size: 20px; } .search-wrapper { gap: 5px; } .search-input { width: 100px; padding: 6px 10px; font-size: 13px; } .search-input:focus { width: 135px; } .search-btn { padding: 6px 12px; font-size: 12px; } .hero-title { font-size: 24px; } .hero-synopsis { -webkit-line-clamp: 2; font-size: 12px; } .hero-play-btn { padding: 8px 18px; font-size: 14px; } .catalog-container { padding: 0 15px; } .anime-card { min-width: 115px; max-width: 115px; } }
     </style>
 </head>
 <body>
@@ -275,7 +61,6 @@
     </div>
 
     <div id="home-content">
-        
         <div class="hero-banner" id="hero-banner" style="background-image: url('https://via.placeholder.com/800x400/121212/333333?text=Loading...');">
             <div class="hero-overlay"></div>
             <div class="hero-content">
@@ -290,22 +75,16 @@
         <div class="catalog-container">
             <div class="section-title">🔥 Trending Now</div>
             <div class="anime-scroll-row" id="trending-container"></div>
-
             <div class="section-title">📺 Currently Airing</div>
             <div class="anime-scroll-row" id="airing-container"></div>
-
             <div class="ad-banner">Mid-Page Native Ad Space</div>
-
             <div class="section-title">⭐ All-Time Classics</div>
             <div class="anime-scroll-row" id="classics-container"></div>
-
             <div class="section-title">✨ Upcoming Next Season</div>
             <div class="anime-scroll-row" id="upcoming-container"></div>
         </div>
         
-        <div class="footer">
-            © 2026 Ani3Lix Platform.<br>Built for the Anime Community.
-        </div>
+        <div class="footer">© 2026 Ani3Lix Platform.<br>Built for the Anime Community.</div>
     </div>
 
     <script>
@@ -313,53 +92,40 @@
         tg.ready();
         tg.expand();
 
-        // 🚀 THE BYPASS: Smart Fetching to dodge ISP blocks
+        // Upgraded to use custom Vercel backend
         async function safeFetch(url) {
             try {
-                // Attempt 1: Direct Connection
                 const response = await fetch(url);
                 if (!response.ok) throw new Error("Blocked or Rate Limited");
                 return await response.json();
             } catch (error) {
-                // Attempt 2: Bypassing the block via a raw proxy
-                console.log("Direct connection failed. Rerouting through proxy...");
-                const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+                const proxyUrl = "/api/proxy?url=" + encodeURIComponent(url);
                 const proxyResponse = await fetch(proxyUrl);
                 return await proxyResponse.json();
             }
         }
 
-        // 1. Function to build the premium cards
         function createCard(anime) {
             const card = document.createElement('div');
             card.className = 'anime-card';
             card.onclick = () => { window.location.href = `details.html?id=${anime.mal_id}`; };
-            
             const year = anime.year || (anime.aired && anime.aired.prop.from.year) || 'N/A';
-            
             card.innerHTML = `
                 <img class="anime-cover" src="${anime.images.jpg.large_image_url || anime.images.jpg.image_url}" alt="${anime.title}">
-                <div class="anime-info">
-                    <div class="anime-title">${anime.title}</div>
-                    <div class="anime-year">${anime.type} • ${year}</div>
-                </div>
+                <div class="anime-info"><div class="anime-title">${anime.title}</div><div class="anime-year">${anime.type} • ${year}</div></div>
             `;
             return card;
         }
 
-        // 2. Fetch API sequentially using the Failover Proxy
         async function buildHomepage() {
             try {
-                // Now using safeFetch() instead of standard fetch()
                 const trendData = await safeFetch('https://api.jikan.moe/v4/top/anime?filter=bypopularity&limit=15');
-                
                 if (trendData && trendData.data) {
                     const heroAnime = trendData.data[0]; 
                     document.getElementById('hero-banner').style.backgroundImage = `url('${heroAnime.images.webp.large_image_url}')`;
                     document.getElementById('hero-title').innerText = heroAnime.title;
                     document.getElementById('hero-synopsis').innerText = heroAnime.synopsis || "No synopsis available.";
                     document.getElementById('hero-play-btn').onclick = () => { window.location.href = `details.html?id=${heroAnime.mal_id}`; };
-
                     const trendContainer = document.getElementById('trending-container');
                     trendData.data.slice(1).forEach(anime => trendContainer.appendChild(createCard(anime)));
                 }
@@ -393,7 +159,6 @@
             }
         }
 
-        // 3. Search Engine Logic upgraded with Proxy
         async function executeSearch() {
             const query = document.getElementById('search-box').value.trim();
             if (!query) return;
@@ -413,16 +178,13 @@
                     container.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1 / -1;">No anime found.</p>';
                     return;
                 }
-
                 data.data.forEach(anime => container.appendChild(createCard(anime)));
             } catch (error) {
                 container.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1 / -1;">Error loading results. Proxy might be overloaded.</p>';
             }
         }
 
-        function handleKeyPress(event) {
-            if (event.key === "Enter") executeSearch();
-        }
+        function handleKeyPress(event) { if (event.key === "Enter") executeSearch(); }
 
         function clearSearch() {
             document.getElementById('search-box').value = '';
@@ -430,7 +192,6 @@
             document.getElementById('home-content').style.display = 'block';
         }
 
-        // Boot up the engine
         buildHomepage();
     </script>
 </body>

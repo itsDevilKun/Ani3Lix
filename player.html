@@ -154,7 +154,7 @@
         async function fetchAnifyStream(title, epNum) {
             try {
                 // Switching to a much more stable proxy
-                const proxy = "https://api.allorigins.win/raw?url=";
+                const proxy = "/api/proxy?url=";
 
                 // Step A: Search Anify
                 const searchUrl = `https://api.anify.tv/search?query=${encodeURIComponent(title)}&type=anime`;

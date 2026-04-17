@@ -98,7 +98,7 @@
     <div class="ad-banner">Top Video Player Ad Space</div>
 
     <div class="player-wrapper">
-        <div id="loading-indicator" class="loading-text">Connecting to your private streaming proxy...</div>
+        <div id="loading-indicator" class="loading-text">Bypassing security & fetching from Zoro (HiAnime)...</div>
         <video id="video-player" controls crossorigin playsinline style="display:none;"></video>
         <button id="skip-btn" class="skip-button">Skip Intro</button>
     </div>
@@ -144,8 +144,8 @@
                         }
                     }).catch(e => console.log("No skip times found."));
 
-                // 3. Trigger Your Private Scraper
-                fetchRealStream(animeTitle, episodeNum);
+                // 3. Trigger The New Zoro Scraper
+                fetchZoroStream(animeTitle, episodeNum);
 
             } catch (error) {
                 document.getElementById('display-name').innerText = "Data load failed.";
@@ -153,31 +153,34 @@
             }
         }
 
-        // --- YOUR PRIVATE PROXY INTEGRATION ---
-        async function fetchRealStream(title, epNum) {
-            // Your custom deployment URL
-            const BASE_URL = "https://animeproxy-nu.vercel.app";
+        // --- NEW ZORO (HiAnime) INTEGRATION ---
+        async function fetchZoroStream(title, epNum) {
+            // Using a highly stable, community-hosted API instead of local proxy
+            const BASE_URL = "https://api-consumet.org/anime/zoro";
 
             try {
-                // Step A: Search your proxy for the Anime ID
-                const searchRes = await fetch(`${BASE_URL}/anime/gogoanime/${encodeURIComponent(title)}`);
-                if (!searchRes.ok) throw new Error("Proxy server is unreachable.");
+                // Step A: Search Zoro for the Anime
+                const searchRes = await fetch(`${BASE_URL}/${encodeURIComponent(title)}`);
+                if (!searchRes.ok) throw new Error("Servers are heavily loaded. Try again later.");
                 const searchData = await searchRes.json();
                 
                 if (!searchData.results || searchData.results.length === 0) {
-                    throw new Error("Anime not found on stream servers.");
+                    throw new Error("Anime not found on Zoro stream servers.");
                 }
-                const consumetAnimeId = searchData.results[0].id;
+                const zoroId = searchData.results[0].id;
 
-                // Step B: Fetch the Episode List
-                const infoRes = await fetch(`${BASE_URL}/anime/gogoanime/info/${consumetAnimeId}`);
-                const infoData = await infoRes.json();
+                // Step B: Fetch the Episode List (Handling both potential URL structures)
+                let infoRes = await fetch(`${BASE_URL}/info?id=${zoroId}`);
+                if (!infoRes.ok) infoRes = await fetch(`${BASE_URL}/info/${zoroId}`);
                 
+                const infoData = await infoRes.json();
                 const episodeData = infoData.episodes.find(e => parseInt(e.number) === parseInt(epNum));
                 if (!episodeData) throw new Error("Episode not found.");
 
                 // Step C: Fetch the raw streaming sources (.m3u8)
-                const streamRes = await fetch(`${BASE_URL}/anime/gogoanime/watch/${episodeData.id}`);
+                let streamRes = await fetch(`${BASE_URL}/watch?episodeId=${episodeData.id}`);
+                if (!streamRes.ok) streamRes = await fetch(`${BASE_URL}/watch/${episodeData.id}`);
+                
                 const streamData = await streamRes.json();
 
                 if (!streamData.sources || streamData.sources.length === 0) {
@@ -215,7 +218,7 @@
                 player = new Plyr(videoElement, { seekTime: 10 });
             }
 
-            // Skip Button Overlay Logic
+            // Skip Button Logic
             player.on('timeupdate', () => {
                 const time = player.currentTime;
                 if (skipTimes.op && time >= skipTimes.op.startTime && time <= skipTimes.op.endTime) {

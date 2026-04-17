@@ -128,13 +128,11 @@
         async function fetchInitialData() {
             if (!animeId) return;
             try {
-                // 1. Get Title from Jikan
                 const jikanRes = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
                 const jikanData = await jikanRes.json();
                 const animeTitle = jikanData.data.title;
                 document.getElementById('display-name').innerText = animeTitle;
 
-                // 2. Fetch Skip Times quietly in the background
                 fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
                     .then(res => res.json())
                     .then(data => {
@@ -144,7 +142,6 @@
                         }
                     }).catch(e => console.log("No skip times found."));
 
-                // 3. Trigger the Anify Stream Scraper
                 fetchAnifyStream(animeTitle, episodeNum);
 
             } catch (error) {
@@ -153,44 +150,56 @@
             }
         }
 
-        // UPDATED: The Anify Bridge with CORS Proxy
+        // BULLETPROOF: The Anify Bridge
         async function fetchAnifyStream(title, epNum) {
             try {
-                // The middleman that prevents your browser from blocking the request
-                const proxy = "https://corsproxy.io/?";
+                // Switching to a much more stable proxy
+                const proxy = "https://api.allorigins.win/raw?url=";
 
-                // Step A: Search Anify database for the Anime
+                // Step A: Search Anify
                 const searchUrl = `https://api.anify.tv/search?query=${encodeURIComponent(title)}&type=anime`;
                 const searchRes = await fetch(proxy + encodeURIComponent(searchUrl));
+                
+                if (!searchRes.ok) throw new Error(`Proxy/API error: ${searchRes.status}`);
                 const searchData = await searchRes.json();
                 
-                if (!searchData || searchData.length === 0) {
+                // BULLETPROOF FIX: Check if the API returned an error object instead of an array
+                if (searchData.error || searchData.message) {
+                    throw new Error(searchData.error || searchData.message);
+                }
+
+                // Handle both array responses and object responses safely
+                const searchResults = Array.isArray(searchData) ? searchData : (searchData.results || []);
+                
+                if (!searchResults || searchResults.length === 0) {
                     throw new Error("Anime not found in Anify database.");
                 }
-                const anifyId = searchData[0].id; 
+                const anifyId = searchResults[0].id; 
 
-                // Step B: Get all available episodes and providers
+                // Step B: Get episodes
                 const epUrl = `https://api.anify.tv/episodes/${anifyId}`;
                 const epRes = await fetch(proxy + encodeURIComponent(epUrl));
                 const epData = await epRes.json();
                 
-                if (!epData || epData.length === 0) {
+                const epResults = Array.isArray(epData) ? epData : (epData.episodes || []);
+                if (!epResults || epResults.length === 0) {
                     throw new Error("No providers found for this anime.");
                 }
 
                 // Step C: Select a provider 
-                const provider = epData.find(p => p.episodes.length > 0) || epData[0];
-                const episode = provider.episodes.find(e => e.number === parseInt(epNum));
+                const provider = epResults.find(p => p.episodes && p.episodes.length > 0) || epResults[0];
+                if (!provider || !provider.episodes) throw new Error("No episodes found on provider.");
 
-                if (!episode) throw new Error("Episode number not found.");
+                const episode = provider.episodes.find(e => parseInt(e.number) === parseInt(epNum));
+                if (!episode) throw new Error("Episode " + epNum + " not found.");
 
                 // Step D: Fetch the raw streaming sources (.m3u8)
                 const sourceUrl = `https://api.anify.tv/sources?providerId=${provider.providerId}&watchId=${encodeURIComponent(episode.id)}&episodeNumber=${epNum}&id=${anifyId}`;
                 const sourceRes = await fetch(proxy + encodeURIComponent(sourceUrl));
                 const sourceData = await sourceRes.json();
 
-                if (!sourceData.sources || sourceData.sources.length === 0) {
-                    throw new Error("No streamable sources found.");
+                if (!sourceData || !sourceData.sources || sourceData.sources.length === 0) {
+                    throw new Error("No streamable video files found.");
                 }
 
                 // Grab the highest quality link

@@ -153,48 +153,54 @@
             }
         }
 
-        // NEW: The Anify Bridge
+        // UPDATED: The Anify Bridge with CORS Proxy
         async function fetchAnifyStream(title, epNum) {
             try {
+                // The middleman that prevents your browser from blocking the request
+                const proxy = "https://corsproxy.io/?";
+
                 // Step A: Search Anify database for the Anime
-                const searchRes = await fetch(`https://api.anify.tv/search?query=${encodeURIComponent(title)}&type=anime`);
+                const searchUrl = `https://api.anify.tv/search?query=${encodeURIComponent(title)}&type=anime`;
+                const searchRes = await fetch(proxy + encodeURIComponent(searchUrl));
                 const searchData = await searchRes.json();
                 
                 if (!searchData || searchData.length === 0) {
                     throw new Error("Anime not found in Anify database.");
                 }
-                const anifyId = searchData[0].id; // Grab the best match
+                const anifyId = searchData[0].id; 
 
                 // Step B: Get all available episodes and providers
-                const epRes = await fetch(`https://api.anify.tv/episodes/${anifyId}`);
+                const epUrl = `https://api.anify.tv/episodes/${anifyId}`;
+                const epRes = await fetch(proxy + encodeURIComponent(epUrl));
                 const epData = await epRes.json();
                 
                 if (!epData || epData.length === 0) {
                     throw new Error("No providers found for this anime.");
                 }
 
-                // Step C: Select a provider (we default to the first available one that isn't empty)
+                // Step C: Select a provider 
                 const provider = epData.find(p => p.episodes.length > 0) || epData[0];
                 const episode = provider.episodes.find(e => e.number === parseInt(epNum));
 
                 if (!episode) throw new Error("Episode number not found.");
 
                 // Step D: Fetch the raw streaming sources (.m3u8)
-                const sourceRes = await fetch(`https://api.anify.tv/sources?providerId=${provider.providerId}&watchId=${encodeURIComponent(episode.id)}&episodeNumber=${epNum}&id=${anifyId}`);
+                const sourceUrl = `https://api.anify.tv/sources?providerId=${provider.providerId}&watchId=${encodeURIComponent(episode.id)}&episodeNumber=${epNum}&id=${anifyId}`;
+                const sourceRes = await fetch(proxy + encodeURIComponent(sourceUrl));
                 const sourceData = await sourceRes.json();
 
                 if (!sourceData.sources || sourceData.sources.length === 0) {
                     throw new Error("No streamable sources found.");
                 }
 
-                // Grab the highest quality 'auto' or '1080p' link
+                // Grab the highest quality link
                 const bestSource = sourceData.sources.find(s => s.quality === 'auto' || s.quality === '1080p') || sourceData.sources[0];
 
                 // Fire up the player
                 initializePlayer(bestSource.url);
 
             } catch (error) {
-                loadingText.innerText = "Error: " + error.message + " Try another anime.";
+                loadingText.innerText = "Error: " + error.message;
                 console.error(error);
             }
         }

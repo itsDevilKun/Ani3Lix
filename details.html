@@ -154,8 +154,7 @@
                     btn.className = 'ep-btn';
                     btn.innerText = i;
                     // Prepare for Phase 3: Video Player Link
-                    btn.onclick = () => alert(`We will link this to the video player soon! (Episode ${i})`);
-                    epContainer.appendChild(btn);
+                    btn.onclick = () => { window.location.href = `player.html?id=${animeId}&ep=${i}`; };
                 }
 
             } catch (error) {

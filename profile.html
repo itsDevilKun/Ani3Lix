@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ani3Lix - Profile</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        :root {
+            --main-red: #ff4757;
+            --bg-color: #0f0f0f;
+            --card-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .btn-back {
+            background-color: transparent;
+            color: var(--text-main);
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            margin-right: 15px;
+            text-decoration: none;
+        }
+
+        /* Profile Info Card */
+        .profile-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            margin-bottom: 25px;
+        }
+        .profile-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: #333;
+            border: 2px solid var(--main-red);
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .profile-details h2 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+        }
+        .profile-details p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Integration Section */
+        .integration-section {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 15px 0;
+            border-left: 3px solid var(--main-red);
+            padding-left: 10px;
+        }
+        .anilist-btn {
+            background-color: #2b2d42;
+            color: white;
+            border: 1px solid #3f4163;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.2s;
+        }
+        .anilist-btn:active { transform: scale(0.98); }
+        .anilist-btn img { width: 20px; }
+
+        /* Watch History Shell */
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+        .history-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <a href="index.html" class="btn-back">←</a>
+        <h2 style="margin:0;">My Profile</h2>
+    </div>
+
+    <div class="profile-card">
+        <div class="profile-avatar" id="user-avatar">?</div>
+        <div class="profile-details">
+            <h2 id="user-name">Guest User</h2>
+            <p id="user-id">Telegram Web App</p>
+        </div>
+    </div>
+
+    <div class="integration-section">
+        <h3 class="section-title">Library Sync</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">
+            Connect your AniList account to automatically track your watched episodes.
+        </p>
+        <button class="anilist-btn" onclick="connectAniList()">
+            <span>Connect AniList</span>
+        </button>
+    </div>
+
+    <div>
+        <h3 class="section-title">Recent Watch History</h3>
+        <div id="history-container" class="history-empty">
+            Your watch history is currently empty.
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // 1. Pull the user's actual Telegram info safely
+        const tgUser = tg.initDataUnsafe?.user;
+        
+        if (tgUser) {
+            document.getElementById('user-name').innerText = tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '');
+            document.getElementById('user-id').innerText = `@${tgUser.username || tgUser.id}`;
+            document.getElementById('user-avatar').innerText = tgUser.first_name.charAt(0).toUpperCase();
+        }
+
+        // 2. Placeholder for Phase 3 OAuth
+        function connectAniList() {
+            alert("AniList OAuth flow will launch here! We will redirect the user to AniList to log in, grab their token, and return them to the app.");
+        }
+    </script>
+</body>
+      </html>
+      

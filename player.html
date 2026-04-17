@@ -40,7 +40,6 @@
             font-size: 12px;
             border: 1px dashed #555;
         }
-        
         .player-wrapper {
             width: 100%;
             max-width: 800px;
@@ -48,13 +47,10 @@
             border-radius: 10px;
             overflow: hidden; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-            position: relative; /* Crucial for positioning the skip button */
+            position: relative; 
+            background-color: #000;
         }
-        
-        :root {
-            --plyr-color-main: #ff4757;
-        }
-        
+        :root { --plyr-color-main: #ff4757; }
         .ep-title {
             font-size: 20px;
             font-weight: bold;
@@ -66,8 +62,6 @@
             color: #ccc;
             margin-bottom: 15px;
         }
-
-        /* 1. The Skip Button Styling */
         .skip-button {
             position: absolute;
             bottom: 70px;
@@ -79,13 +73,17 @@
             border-radius: 6px;
             cursor: pointer;
             z-index: 10;
-            display: none; /* Hidden by default */
+            display: none; 
             font-weight: bold;
             font-size: 14px;
             transition: 0.2s ease-in-out;
         }
-        .skip-button:hover {
-            background-color: #ff4757;
+        .skip-button:hover { background-color: #ff4757; }
+        .loading-text {
+            color: #fff;
+            padding: 40px;
+            text-align: center;
+            font-style: italic;
         }
     </style>
 </head>
@@ -94,12 +92,13 @@
     <a id="back-btn" href="index.html" class="btn-back">← Back</a>
     
     <div class="ep-title" id="display-ep">Loading Episode...</div>
-    <div class="anime-name" id="display-name">Please wait</div>
+    <div class="anime-name" id="display-name">Please wait...</div>
 
     <div class="ad-banner">Top Video Player Ad Space</div>
 
     <div class="player-wrapper">
-        <video id="video-player" controls crossorigin playsinline></video>
+        <div id="loading-indicator" class="loading-text">Scraping stream links from Consumet...</div>
+        <video id="video-player" controls crossorigin playsinline style="display:none;"></video>
         <button id="skip-btn" class="skip-button">Skip Intro</button>
     </div>
 
@@ -117,93 +116,115 @@
         const animeId = urlParams.get('id');
         const episodeNum = urlParams.get('ep');
 
-        if (animeId) {
-            document.getElementById('back-btn').href = `details.html?id=${animeId}`;
-        }
-        if (episodeNum) {
-            document.getElementById('display-ep').innerText = `Episode ${episodeNum}`;
-        }
-
-        async function fetchAnimeInfo() {
-            if (!animeId) return;
-            try {
-                const response = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
-                const data = await response.json();
-                document.getElementById('display-name').innerText = data.data.title;
-            } catch (error) {
-                document.getElementById('display-name').innerText = "Unknown Anime";
-            }
-        }
-        fetchAnimeInfo();
-
-        // 3. Variables to hold our skip timestamps
         let skipTimes = { op: null, ed: null };
         const skipBtn = document.getElementById('skip-btn');
+        const videoElement = document.getElementById('video-player');
+        const loadingText = document.getElementById('loading-indicator');
 
-        // 4. Fetch the exact intro/outro times from the AniSkip Database
-        async function fetchSkipTimes() {
-            if (!animeId || !episodeNum) return;
+        if (animeId) document.getElementById('back-btn').href = `details.html?id=${animeId}`;
+        if (episodeNum) document.getElementById('display-ep').innerText = `Episode ${episodeNum}`;
+
+        // Phase 1: Fetch Metadata and Skip Times
+        async function fetchInitialData() {
+            if (!animeId) return;
             try {
-                const res = await fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`);
-                const data = await res.json();
-                if (data.found) {
-                    if (data.results.op) skipTimes.op = data.results.op.interval;
-                    if (data.results.ed) skipTimes.ed = data.results.ed.interval;
-                }
-            } catch (e) {
-                console.log("No skip times found for this episode.");
+                // Get Title from Jikan
+                const jikanRes = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
+                const jikanData = await jikanRes.json();
+                const animeTitle = jikanData.data.title;
+                document.getElementById('display-name').innerText = animeTitle;
+
+                // Get Skip Times in the background
+                fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.found) {
+                            if (data.results.op) skipTimes.op = data.results.op.interval;
+                            if (data.results.ed) skipTimes.ed = data.results.ed.interval;
+                        }
+                    }).catch(e => console.log("No skip times found."));
+
+                // Trigger the Consumet Stream Scraper
+                fetchRealStream(animeTitle, episodeNum);
+
+            } catch (error) {
+                document.getElementById('display-name').innerText = "Data load failed.";
             }
         }
-        fetchSkipTimes();
 
-        // 5. Initialize the Streaming Engine with 10s Skips
-        document.addEventListener('DOMContentLoaded', () => {
-            const video = document.getElementById('video-player');
-            const streamUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; 
+        // Phase 2: The Consumet Bridge
+        async function fetchRealStream(title, epNum) {
+            try {
+                // 1. Search Consumet for the Anime ID
+                const searchRes = await fetch(`https://api.consumet.org/anime/gogoanime/${encodeURIComponent(title)}`);
+                const searchData = await searchRes.json();
+                
+                if (!searchData.results || searchData.results.length === 0) {
+                    throw new Error("Anime not found on stream servers.");
+                }
+                const consumetAnimeId = searchData.results[0].id;
+
+                // 2. Fetch the Episode List to get the exact Episode ID
+                const infoRes = await fetch(`https://api.consumet.org/anime/gogoanime/info/${consumetAnimeId}`);
+                const infoData = await infoRes.json();
+                
+                const episodeData = infoData.episodes.find(e => e.number === parseInt(epNum));
+                if (!episodeData) throw new Error("Episode not found.");
+
+                // 3. Fetch the actual .m3u8 streaming links
+                const streamRes = await fetch(`https://api.consumet.org/anime/gogoanime/watch/${episodeData.id}`);
+                const streamData = await streamRes.json();
+
+                // 4. Find the best quality link
+                const source = streamData.sources.find(s => s.quality === 'default' || s.quality === '1080p') || streamData.sources[0];
+
+                // Initialize the player with the real URL
+                initializePlayer(source.url);
+
+            } catch (error) {
+                loadingText.innerText = "Error: Could not fetch stream. Server might be down.";
+                console.error(error);
+            }
+        }
+
+        // Phase 3: Start the Video
+        function initializePlayer(streamUrl) {
+            loadingText.style.display = 'none';
+            videoElement.style.display = 'block';
 
             let player;
-
             if (Hls.isSupported()) {
                 const hls = new Hls();
                 hls.loadSource(streamUrl);
-                hls.attachMedia(video);
-                
-                player = new Plyr(video, {
-                    // Added 'rewind' and 'fast-forward' to the UI
+                hls.attachMedia(videoElement);
+                player = new Plyr(videoElement, {
                     controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
                     settings: ['quality', 'speed'],
-                    seekTime: 10 // Hardcoded to exactly 10 seconds
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = streamUrl;
-                player = new Plyr(video, {
-                    controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
                     seekTime: 10
                 });
+            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                videoElement.src = streamUrl;
+                player = new Plyr(videoElement, { seekTime: 10 });
             }
 
-            // 6. The logic that makes the Skip Button appear at the right moment
+            // Skip Button Logic
             player.on('timeupdate', () => {
                 const time = player.currentTime;
-                
-                // If currently playing the Intro
                 if (skipTimes.op && time >= skipTimes.op.startTime && time <= skipTimes.op.endTime) {
                     skipBtn.style.display = 'block';
                     skipBtn.innerText = 'Skip Intro';
                     skipBtn.onclick = () => { player.currentTime = skipTimes.op.endTime; };
-                } 
-                // If currently playing the Ending
-                else if (skipTimes.ed && time >= skipTimes.ed.startTime && time <= skipTimes.ed.endTime) {
+                } else if (skipTimes.ed && time >= skipTimes.ed.startTime && time <= skipTimes.ed.endTime) {
                     skipBtn.style.display = 'block';
                     skipBtn.innerText = 'Skip Ending';
                     skipBtn.onclick = () => { player.currentTime = skipTimes.ed.endTime; };
-                } 
-                // Hide button otherwise
-                else {
+                } else {
                     skipBtn.style.display = 'none';
                 }
             });
-        });
+        }
+
+        fetchInitialData();
     </script>
 </body>
 </html>

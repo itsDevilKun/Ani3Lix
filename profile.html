@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ani3Lix - Profile</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
@@ -23,101 +23,47 @@
             padding: 15px;
         }
 
-        .header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        .btn-back {
-            background-color: transparent;
-            color: var(--text-main);
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            margin-right: 15px;
-            text-decoration: none;
-        }
+        .header { display: flex; align-items: center; margin-bottom: 30px; }
+        .btn-back { background-color: transparent; color: var(--text-main); border: none; font-size: 20px; cursor: pointer; margin-right: 15px; text-decoration: none; }
 
         /* Profile Info Card */
-        .profile-card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            margin-bottom: 25px;
-        }
-        .profile-avatar {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            background-color: #333;
-            border: 2px solid var(--main-red);
-            object-fit: cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .profile-details h2 {
-            margin: 0 0 5px 0;
-            font-size: 20px;
-        }
-        .profile-details p {
-            margin: 0;
-            font-size: 13px;
-            color: var(--text-muted);
-        }
+        .profile-card { background-color: var(--card-bg); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-bottom: 25px; }
+        .profile-avatar { width: 70px; height: 70px; border-radius: 50%; background-color: #333; border: 2px solid var(--main-red); object-fit: cover; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; }
+        .profile-details h2 { margin: 0 0 5px 0; font-size: 20px; }
+        .profile-details p { margin: 0; font-size: 13px; color: var(--text-muted); }
 
         /* Integration Section */
-        .integration-section {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 0 0 15px 0;
-            border-left: 3px solid var(--main-red);
-            padding-left: 10px;
-        }
-        .anilist-btn {
-            background-color: #2b2d42;
-            color: white;
-            border: 1px solid #3f4163;
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: 0.2s;
-        }
+        .integration-section { background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .section-title { font-size: 16px; font-weight: bold; margin: 0 0 15px 0; border-left: 3px solid var(--main-red); padding-left: 10px; }
+        .anilist-btn { background-color: #2b2d42; color: white; border: 1px solid #3f4163; width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
         .anilist-btn:active { transform: scale(0.98); }
-        .anilist-btn img { width: 20px; }
 
-        /* Watch History Shell */
+        /* Watch History Grid */
         .history-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 10px;
+            gap: 15px;
         }
-        .history-empty {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 13px;
-            padding: 20px;
+        .history-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px; background-color: var(--card-bg); border-radius: 8px; }
+        
+        .history-card {
             background-color: var(--card-bg);
             border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: 0.2s;
+        }
+        .history-card:active { transform: scale(0.95); }
+        .history-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
+        .ep-badge {
+            position: absolute; top: 6px; right: 6px; background-color: var(--main-red); color: white; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .history-title { padding: 8px; font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+
+        @media (max-width: 480px) {
+            .history-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
         }
     </style>
 </head>
@@ -138,19 +84,18 @@
 
     <div class="integration-section">
         <h3 class="section-title">Library Sync</h3>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">
-            Connect your AniList account to automatically track your watched episodes.
-        </p>
-        <button class="anilist-btn" onclick="connectAniList()">
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Connect your AniList account to automatically track your watched episodes across devices.</p>
+        <button class="anilist-btn" onclick="alert('AniList OAuth Phase coming soon!')">
             <span>Connect AniList</span>
         </button>
     </div>
 
     <div>
-        <h3 class="section-title">Recent Watch History</h3>
-        <div id="history-container" class="history-empty">
-            Your watch history is currently empty.
-        </div>
+        <h3 class="section-title" style="display: flex; justify-content: space-between;">
+            Recent Watch History
+            <span style="font-size: 12px; font-weight: normal; color: var(--main-red); cursor: pointer;" onclick="clearHistory()">Clear All</span>
+        </h3>
+        <div id="history-container" class="history-empty">Loading history...</div>
     </div>
 
     <script>
@@ -160,18 +105,52 @@
 
         // 1. Pull the user's actual Telegram info safely
         const tgUser = tg.initDataUnsafe?.user;
-        
         if (tgUser) {
             document.getElementById('user-name').innerText = tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '');
             document.getElementById('user-id').innerText = `@${tgUser.username || tgUser.id}`;
             document.getElementById('user-avatar').innerText = tgUser.first_name.charAt(0).toUpperCase();
         }
 
-        // 2. Placeholder for Phase 3 OAuth
-        function connectAniList() {
-            alert("AniList OAuth flow will launch here! We will redirect the user to AniList to log in, grab their token, and return them to the app.");
+        // 2. Decode the LocalStorage Database and render the cards
+        function renderHistory() {
+            const container = document.getElementById('history-container');
+            const history = JSON.parse(localStorage.getItem('ani3lix_history')) || [];
+
+            if (history.length === 0) {
+                container.innerHTML = 'Your watch history is currently empty. Start watching some anime!';
+                container.className = 'history-empty';
+                return;
+            }
+
+            container.innerHTML = '';
+            container.className = 'history-grid';
+
+            history.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'history-card';
+                
+                // Tapping a history card sends the user straight to the exact episode they were on
+                card.onclick = () => { window.location.href = `player.html?id=${item.id}&ep=${item.ep}`; };
+
+                card.innerHTML = `
+                    <div class="ep-badge">Ep ${item.ep}</div>
+                    <img src="${item.image}" alt="${item.title}">
+                    <div class="history-title">${item.title}</div>
+                `;
+                container.appendChild(card);
+            });
         }
+
+        // 3. Let users wipe their history
+        function clearHistory() {
+            if (confirm("Are you sure you want to clear your local watch history?")) {
+                localStorage.removeItem('ani3lix_history');
+                renderHistory();
+            }
+        }
+
+        // Run the engine
+        renderHistory();
     </script>
 </body>
-      </html>
-      
+</html>

@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ani3Lix - Player</title>
+    <title>Ani3Lix - Premium Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     
     <style>
         body {
@@ -13,7 +15,6 @@
             color: var(--tg-theme-text-color, #ffffff);
             margin: 0;
             padding: 15px;
-            text-align: center;
         }
         .btn-back {
             background-color: var(--tg-theme-secondary-bg-color, #333);
@@ -26,10 +27,6 @@
             font-size: 14px;
             text-decoration: none;
             display: inline-block;
-            float: left; /* Aligns the back button to the top left */
-        }
-        .clearfix {
-            clear: both;
         }
         .ad-banner {
             background-color: var(--tg-theme-secondary-bg-color, #2a2a2a);
@@ -44,23 +41,26 @@
             font-size: 12px;
             border: 1px dashed #555;
         }
+        
+        /* 2. Upgraded Player Container */
         .player-wrapper {
             width: 100%;
             max-width: 800px;
             margin: 0 auto;
-            margin-top: 20px;
+            border-radius: 10px;
+            overflow: hidden; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6); /* Adds a cinematic drop shadow */
         }
-        video {
-            width: 100%;
-            border-radius: 8px;
-            background-color: #000;
-            outline: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        
+        /* Customizing Plyr to match the Ani3Lix Red theme */
+        :root {
+            --plyr-color-main: #ff4757;
         }
+        
         .ep-title {
             font-size: 20px;
             font-weight: bold;
-            margin: 10px 0 5px 0;
+            margin: 15px 0 5px 0;
             color: #ff4757;
         }
         .anime-name {
@@ -72,45 +72,39 @@
 </head>
 <body>
 
-    <a id="back-btn" href="index.html" class="btn-back">← Back to Details</a>
-    <div class="clearfix"></div>
+    <a id="back-btn" href="index.html" class="btn-back">← Back</a>
     
+    <div class="ep-title" id="display-ep">Loading Episode...</div>
+    <div class="anime-name" id="display-name">Please wait</div>
+
+    <div class="ad-banner">Top Video Player Ad Space</div>
+
     <div class="player-wrapper">
-        <div class="ep-title" id="display-ep">Loading Episode...</div>
-        <div class="anime-name" id="display-name">Please wait</div>
-
-        <div class="ad-banner">Top Video Player Ad Space</div>
-
-        <video id="video-player" controls playsinline autoplay>
-            <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-
-        <div class="ad-banner">Bottom Video Player Ad Space</div>
+        <video id="video-player" controls crossorigin playsinline></video>
     </div>
+
+    <div class="ad-banner">Bottom Video Player Ad Space</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // 1. Extract the IDs we passed in the URL (e.g., ?id=21&ep=4)
         const urlParams = new URLSearchParams(window.location.search);
         const animeId = urlParams.get('id');
         const episodeNum = urlParams.get('ep');
 
-        // 2. Set the Back Button to return to the exact show they were looking at
         if (animeId) {
             document.getElementById('back-btn').href = `details.html?id=${animeId}`;
         }
-
-        // 3. Update the UI with the Episode Number
         if (episodeNum) {
             document.getElementById('display-ep').innerText = `Episode ${episodeNum}`;
         }
 
-        // 4. Fetch the anime's title from the API to make the page look polished
-        async function fetchAnimeName() {
+        async function fetchAnimeInfo() {
             if (!animeId) return;
             try {
                 const response = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
@@ -120,8 +114,31 @@
                 document.getElementById('display-name').innerText = "Unknown Anime";
             }
         }
+        fetchAnimeInfo();
 
-        fetchAnimeName();
+        // 5. Initialize the Streaming Engine
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video-player');
+            
+            // This is a high-quality HLS streaming test link. 
+            // Once we connect Consumet, this is exactly what we replace.
+            const streamUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; 
+
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                
+                // Mount the Plyr UI over the video
+                new Plyr(video, {
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
+                    settings: ['captions', 'quality', 'speed']
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
+                new Plyr(video);
+            }
+        });
     </script>
 </body>
 </html>

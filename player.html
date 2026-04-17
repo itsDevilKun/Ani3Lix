@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ani3Lix - Premium Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     
     <style>
@@ -42,17 +41,16 @@
             border: 1px dashed #555;
         }
         
-        /* 2. Upgraded Player Container */
         .player-wrapper {
             width: 100%;
             max-width: 800px;
             margin: 0 auto;
             border-radius: 10px;
             overflow: hidden; 
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6); /* Adds a cinematic drop shadow */
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+            position: relative; /* Crucial for positioning the skip button */
         }
         
-        /* Customizing Plyr to match the Ani3Lix Red theme */
         :root {
             --plyr-color-main: #ff4757;
         }
@@ -68,6 +66,27 @@
             color: #ccc;
             margin-bottom: 15px;
         }
+
+        /* 1. The Skip Button Styling */
+        .skip-button {
+            position: absolute;
+            bottom: 70px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: 1px solid #ff4757;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 10;
+            display: none; /* Hidden by default */
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.2s ease-in-out;
+        }
+        .skip-button:hover {
+            background-color: #ff4757;
+        }
     </style>
 </head>
 <body>
@@ -81,6 +100,7 @@
 
     <div class="player-wrapper">
         <video id="video-player" controls crossorigin playsinline></video>
+        <button id="skip-btn" class="skip-button">Skip Intro</button>
     </div>
 
     <div class="ad-banner">Bottom Video Player Ad Space</div>
@@ -116,28 +136,73 @@
         }
         fetchAnimeInfo();
 
-        // 5. Initialize the Streaming Engine
+        // 3. Variables to hold our skip timestamps
+        let skipTimes = { op: null, ed: null };
+        const skipBtn = document.getElementById('skip-btn');
+
+        // 4. Fetch the exact intro/outro times from the AniSkip Database
+        async function fetchSkipTimes() {
+            if (!animeId || !episodeNum) return;
+            try {
+                const res = await fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`);
+                const data = await res.json();
+                if (data.found) {
+                    if (data.results.op) skipTimes.op = data.results.op.interval;
+                    if (data.results.ed) skipTimes.ed = data.results.ed.interval;
+                }
+            } catch (e) {
+                console.log("No skip times found for this episode.");
+            }
+        }
+        fetchSkipTimes();
+
+        // 5. Initialize the Streaming Engine with 10s Skips
         document.addEventListener('DOMContentLoaded', () => {
             const video = document.getElementById('video-player');
-            
-            // This is a high-quality HLS streaming test link. 
-            // Once we connect Consumet, this is exactly what we replace.
             const streamUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; 
+
+            let player;
 
             if (Hls.isSupported()) {
                 const hls = new Hls();
                 hls.loadSource(streamUrl);
                 hls.attachMedia(video);
                 
-                // Mount the Plyr UI over the video
-                new Plyr(video, {
-                    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
-                    settings: ['captions', 'quality', 'speed']
+                player = new Plyr(video, {
+                    // Added 'rewind' and 'fast-forward' to the UI
+                    controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
+                    settings: ['quality', 'speed'],
+                    seekTime: 10 // Hardcoded to exactly 10 seconds
                 });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = streamUrl;
-                new Plyr(video);
+                player = new Plyr(video, {
+                    controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
+                    seekTime: 10
+                });
             }
+
+            // 6. The logic that makes the Skip Button appear at the right moment
+            player.on('timeupdate', () => {
+                const time = player.currentTime;
+                
+                // If currently playing the Intro
+                if (skipTimes.op && time >= skipTimes.op.startTime && time <= skipTimes.op.endTime) {
+                    skipBtn.style.display = 'block';
+                    skipBtn.innerText = 'Skip Intro';
+                    skipBtn.onclick = () => { player.currentTime = skipTimes.op.endTime; };
+                } 
+                // If currently playing the Ending
+                else if (skipTimes.ed && time >= skipTimes.ed.startTime && time <= skipTimes.ed.endTime) {
+                    skipBtn.style.display = 'block';
+                    skipBtn.innerText = 'Skip Ending';
+                    skipBtn.onclick = () => { player.currentTime = skipTimes.ed.endTime; };
+                } 
+                // Hide button otherwise
+                else {
+                    skipBtn.style.display = 'none';
+                }
+            });
         });
     </script>
 </body>

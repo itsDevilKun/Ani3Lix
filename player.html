@@ -10,7 +10,6 @@
     <style>
         body { font-family: Arial, sans-serif; background-color: var(--tg-theme-bg-color, #121212); color: var(--tg-theme-text-color, #ffffff); margin: 0; padding: 15px; }
         .btn-back { background-color: var(--tg-theme-secondary-bg-color, #333); color: var(--tg-theme-text-color, #fff); border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 15px; font-size: 14px; text-decoration: none; display: inline-block; }
-        .ad-banner { background-color: var(--tg-theme-secondary-bg-color, #2a2a2a); color: #777; width: 100%; height: 60px; display: flex; align-items: center; justify-content: center; margin: 15px 0; border-radius: 8px; font-size: 12px; border: 1px dashed #555; }
         .player-wrapper { width: 100%; max-width: 800px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.6); position: relative; background-color: #000; }
         :root { --plyr-color-main: #ff4757; }
         .ep-title { font-size: 20px; font-weight: bold; margin: 15px 0 5px 0; color: #ff4757; }
@@ -27,15 +26,11 @@
     <div class="ep-title" id="display-ep">Loading Episode...</div>
     <div class="anime-name" id="display-name">Please wait...</div>
 
-    <div class="ad-banner">Top Video Player Ad Space</div>
-
     <div class="player-wrapper" id="player-wrapper">
-        <div id="loading-indicator" class="loading-text">Establishing secure connection...</div>
+        <div id="loading-indicator" class="loading-text">Connecting to private AnimeKai engine...</div>
         <video id="video-player" controls crossorigin playsinline style="display:none;"></video>
         <button id="skip-btn" class="skip-button">Skip Intro</button>
     </div>
-
-    <div class="ad-banner">Bottom Video Player Ad Space</div>
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
@@ -57,44 +52,23 @@
         if (animeId) document.getElementById('back-btn').href = `details.html?id=${animeId}`;
         if (episodeNum) document.getElementById('display-ep').innerText = `Episode ${episodeNum}`;
 
-        // 🚀 THE ULTIMATE BYPASS: Multi-Proxy Rotation
-        async function safeFetch(url) {
-            const proxies = [
-                '', // 1. Try direct connection first
-                'https://api.allorigins.win/raw?url=', // 2. Fallback Proxy 1
-                'https://corsproxy.io/?', // 3. Fallback Proxy 2
-                'https://api.codetabs.com/v1/proxy/?quest=' // 4. Fallback Proxy 3
-            ];
+        // 🚀 YOUR LIVE BACKEND API
+        const KAI_API_URL = "https://animekai-api-k6jf.onrender.com"; 
 
-            for (let proxy of proxies) {
-                try {
-                    const targetUrl = proxy ? proxy + encodeURIComponent(url) : url;
-                    const response = await fetch(targetUrl);
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        // Verify it's actually valid JSON, not an HTML error page
-                        if (data) return data; 
-                    }
-                } catch (error) {
-                    console.log(`Connection to ${proxy || 'Direct'} failed. Rotating...`);
-                }
+        // Let the user know if the Render server is waking up
+        setTimeout(() => {
+            if(loadingText.style.display !== 'none') {
+                loadingText.innerText += "\n\n(Waking up the server, this might take up to 45 seconds...)";
             }
-            throw new Error("All proxies and direct connections were blocked.");
-        }
+        }, 6000);
 
         async function fetchInitialData() {
             if (!animeId) return;
-            
-            let animeTitle = "Unknown Anime";
-            let aniId = null;
-            let gogoId = null;
-
-            // ISOLATED BLOCK 1: Jikan Metadata
             try {
-                loadingText.innerText = "Fetching metadata...";
-                const jikanData = await safeFetch(`https://api.jikan.moe/v4/anime/${animeId}`);
-                animeTitle = jikanData.data.title;
+                // Fetch Jikan Metadata (Using the proxy bypass we built earlier)
+                const jikanRes = await fetch(`https://api.allorigins.win/raw?url=` + encodeURIComponent(`https://api.jikan.moe/v4/anime/${animeId}`));
+                const jikanData = await jikanRes.json();
+                const animeTitle = jikanData.data.title;
                 document.getElementById('display-name').innerText = animeTitle;
 
                 // Watch History Tracker
@@ -107,68 +81,77 @@
                     localStorage.setItem('ani3lix_history', JSON.stringify(history));
                 } catch (e) { console.log("History save failed"); }
 
+                // Trigger Your Custom AnimeKai Decryption Engine
+                fetchNativeStream(animeTitle, episodeNum);
+
+                // Fetch Skip Times
+                fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.found) {
+                            if (data.results.op) skipTimes.op = data.results.op.interval;
+                            if (data.results.ed) skipTimes.ed = data.results.ed.interval;
+                        }
+                    }).catch(e => console.log("No skip times found."));
+
             } catch (error) {
-                loadingText.innerText = "Error: Jikan API completely blocked by ISP.";
-                return; // If we can't get the title, we must stop here.
+                document.getElementById('display-name').innerText = "Data load failed.";
+                loadingText.innerText = "Error loading anime metadata.";
             }
-
-            // ISOLATED BLOCK 2: MALSync Mapping
-            try {
-                loadingText.innerText = "Mapping video sources...";
-                const malSyncData = await safeFetch(`https://api.malsync.moe/mal/anime/${animeId}`);
-                aniId = malSyncData.aniId;
-                if (malSyncData.Sites && malSyncData.Sites.Gogoanime) {
-                    gogoId = Object.keys(malSyncData.Sites.Gogoanime)[0];
-                }
-            } catch (error) {
-                console.log("MALSync failed. Continuing to fallback mode.");
-            }
-
-            // ISOLATED BLOCK 3: Stream Deployment
-            const episodeId = gogoId ? `${gogoId}-episode-${episodeNum}` : null;
-            
-            try {
-                if (!episodeId) throw new Error("No Gogoanime ID found.");
-                loadingText.innerText = "Extracting raw video link...";
-                const streamData = await safeFetch(`https://api.amvstr.me/api/v2/stream/${episodeId}`);
-                
-                if (streamData && streamData.stream && streamData.stream.multi && streamData.stream.multi.main) {
-                    initializePlayer(streamData.stream.multi.main.url);
-                } else {
-                    throw new Error("Raw stream not found.");
-                }
-            } catch (apiError) {
-                console.log("Raw extraction failed. Deploying Iframe Fallback...");
-                deployIframeFallback(aniId, episodeId, episodeNum, animeTitle);
-            }
-
-            // Background Skip Times
-            fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.found) {
-                        if (data.results.op) skipTimes.op = data.results.op.interval;
-                        if (data.results.ed) skipTimes.ed = data.results.ed.interval;
-                    }
-                }).catch(e => console.log("No skip times found."));
         }
 
-        // --- THE IFRAME FAILSAFE ---
-        function deployIframeFallback(aniId, episodeId, epNum, title) {
-            const wrapper = document.getElementById('player-wrapper');
-            let iframeSrc = "";
+        async function fetchNativeStream(title, epNum) {
+            try {
+                // Step 0: Search to find AnimeKai slug
+                loadingText.innerText = "Searching AnimeKai database...";
+                const searchRes = await fetch(`${KAI_API_URL}/api/search?keyword=${encodeURIComponent(title)}`);
+                const searchData = await searchRes.json();
+                if (!searchData || searchData.length === 0) throw new Error("Anime not found in AnimeKai.");
+                const slug = searchData[0].slug;
 
-            if (episodeId) {
-                iframeSrc = `https://embtaku.pro/streaming.php?id=${episodeId}`;
-            } else if (aniId) {
-                iframeSrc = `https://player.vidplus.to/embed/anime/${aniId}/${epNum}?dub=false`;
-            } else {
-                // The ultimate fallback: Let the user search directly if all databases fail
-                wrapper.innerHTML = `<div class="loading-text">Stream not automatically found. <br><br> <a href="https://hianime.to/search?keyword=${encodeURIComponent(title)}" target="_blank" style="color:#ff4757;">Search manually here</a></div>`;
-                return;
-            }
+                // Step 1: Get Info to find ani_id
+                loadingText.innerText = "Extracting Anime ID...";
+                const infoRes = await fetch(`${KAI_API_URL}/api/anime/${slug}`);
+                const infoData = await infoRes.json();
+                const aniId = infoData.ani_id;
+                if (!aniId) throw new Error("Could not extract ani_id.");
+
+                // Step 2: Get Episodes to find the specific episode token
+                loadingText.innerText = "Finding episode token...";
+                const epListRes = await fetch(`${KAI_API_URL}/api/episodes/${aniId}`);
+                const epListData = await epListRes.json();
                 
-            wrapper.innerHTML = `<iframe src="${iframeSrc}" width="100%" height="450" frameborder="0" allowfullscreen scrolling="no" style="border-radius: 10px; background-color: #000;"></iframe>`;
+                // Find the token that matches the user's episode number
+                const targetEp = epListData.find(e => parseInt(e.number) === parseInt(epNum));
+                if (!targetEp) throw new Error(`Episode ${epNum} not found.`);
+                const epToken = targetEp.token;
+
+                // Step 3: Get Servers to find the link_id (Prefer Softsub or Sub)
+                loadingText.innerText = "Bypassing servers...";
+                const serversRes = await fetch(`${KAI_API_URL}/api/servers/${epToken}`);
+                const serversData = await serversRes.json();
+                
+                let linkId = null;
+                if (serversData.softsub && serversData.softsub.length > 0) linkId = serversData.softsub[0].link_id;
+                else if (serversData.sub && serversData.sub.length > 0) linkId = serversData.sub[0].link_id;
+                else if (serversData.dub && serversData.dub.length > 0) linkId = serversData.dub[0].link_id;
+                
+                if (!linkId) throw new Error("No playable servers available.");
+
+                // Step 4: Extract the final m3u8 stream!
+                loadingText.innerText = "Decrypting final stream...";
+                const sourceRes = await fetch(`${KAI_API_URL}/api/source/${linkId}`);
+                const sourceData = await sourceRes.json();
+
+                if (!sourceData.sources || sourceData.sources.length === 0) throw new Error("Decryption failed. No stream returned.");
+
+                const streamUrl = sourceData.sources[0].file;
+                initializePlayer(streamUrl);
+
+            } catch (error) {
+                loadingText.innerText = "Error: " + error.message;
+                console.error(error);
+            }
         }
 
         function initializePlayer(streamUrl) {

@@ -98,7 +98,7 @@
     <div class="ad-banner">Top Video Player Ad Space</div>
 
     <div class="player-wrapper">
-        <div id="loading-indicator" class="loading-text">Searching multi-provider streams via Anify...<br>Please wait a moment.</div>
+        <div id="loading-indicator" class="loading-text">Connecting to your private streaming proxy...</div>
         <video id="video-player" controls crossorigin playsinline style="display:none;"></video>
         <button id="skip-btn" class="skip-button">Skip Intro</button>
     </div>
@@ -128,11 +128,13 @@
         async function fetchInitialData() {
             if (!animeId) return;
             try {
+                // 1. Get Title from Jikan
                 const jikanRes = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
                 const jikanData = await jikanRes.json();
                 const animeTitle = jikanData.data.title;
                 document.getElementById('display-name').innerText = animeTitle;
 
+                // 2. Fetch Skip Times
                 fetch(`https://api.aniskip.com/v2/skip-times/${animeId}/${episodeNum}?types=op&types=ed&episodeLength=0`)
                     .then(res => res.json())
                     .then(data => {
@@ -142,7 +144,8 @@
                         }
                     }).catch(e => console.log("No skip times found."));
 
-                fetchAnifyStream(animeTitle, episodeNum);
+                // 3. Trigger Your Private Scraper
+                fetchRealStream(animeTitle, episodeNum);
 
             } catch (error) {
                 document.getElementById('display-name').innerText = "Data load failed.";
@@ -150,60 +153,39 @@
             }
         }
 
-        // BULLETPROOF: The Anify Bridge
-        async function fetchAnifyStream(title, epNum) {
-            try {
-                // Switching to a much more stable proxy
-                const proxy = "/api/proxy?url=";
+        // --- YOUR PRIVATE PROXY INTEGRATION ---
+        async function fetchRealStream(title, epNum) {
+            // Your custom deployment URL
+            const BASE_URL = "https://animeproxy-nu.vercel.app";
 
-                // Step A: Search Anify
-                const searchUrl = `https://api.anify.tv/search?query=${encodeURIComponent(title)}&type=anime`;
-                const searchRes = await fetch(proxy + encodeURIComponent(searchUrl));
-                
-                if (!searchRes.ok) throw new Error(`Proxy/API error: ${searchRes.status}`);
+            try {
+                // Step A: Search your proxy for the Anime ID
+                const searchRes = await fetch(`${BASE_URL}/anime/gogoanime/${encodeURIComponent(title)}`);
+                if (!searchRes.ok) throw new Error("Proxy server is unreachable.");
                 const searchData = await searchRes.json();
                 
-                // BULLETPROOF FIX: Check if the API returned an error object instead of an array
-                if (searchData.error || searchData.message) {
-                    throw new Error(searchData.error || searchData.message);
+                if (!searchData.results || searchData.results.length === 0) {
+                    throw new Error("Anime not found on stream servers.");
                 }
+                const consumetAnimeId = searchData.results[0].id;
 
-                // Handle both array responses and object responses safely
-                const searchResults = Array.isArray(searchData) ? searchData : (searchData.results || []);
+                // Step B: Fetch the Episode List
+                const infoRes = await fetch(`${BASE_URL}/anime/gogoanime/info/${consumetAnimeId}`);
+                const infoData = await infoRes.json();
                 
-                if (!searchResults || searchResults.length === 0) {
-                    throw new Error("Anime not found in Anify database.");
-                }
-                const anifyId = searchResults[0].id; 
+                const episodeData = infoData.episodes.find(e => parseInt(e.number) === parseInt(epNum));
+                if (!episodeData) throw new Error("Episode not found.");
 
-                // Step B: Get episodes
-                const epUrl = `https://api.anify.tv/episodes/${anifyId}`;
-                const epRes = await fetch(proxy + encodeURIComponent(epUrl));
-                const epData = await epRes.json();
-                
-                const epResults = Array.isArray(epData) ? epData : (epData.episodes || []);
-                if (!epResults || epResults.length === 0) {
-                    throw new Error("No providers found for this anime.");
-                }
+                // Step C: Fetch the raw streaming sources (.m3u8)
+                const streamRes = await fetch(`${BASE_URL}/anime/gogoanime/watch/${episodeData.id}`);
+                const streamData = await streamRes.json();
 
-                // Step C: Select a provider 
-                const provider = epResults.find(p => p.episodes && p.episodes.length > 0) || epResults[0];
-                if (!provider || !provider.episodes) throw new Error("No episodes found on provider.");
-
-                const episode = provider.episodes.find(e => parseInt(e.number) === parseInt(epNum));
-                if (!episode) throw new Error("Episode " + epNum + " not found.");
-
-                // Step D: Fetch the raw streaming sources (.m3u8)
-                const sourceUrl = `https://api.anify.tv/sources?providerId=${provider.providerId}&watchId=${encodeURIComponent(episode.id)}&episodeNumber=${epNum}&id=${anifyId}`;
-                const sourceRes = await fetch(proxy + encodeURIComponent(sourceUrl));
-                const sourceData = await sourceRes.json();
-
-                if (!sourceData || !sourceData.sources || sourceData.sources.length === 0) {
+                if (!streamData.sources || streamData.sources.length === 0) {
                     throw new Error("No streamable video files found.");
                 }
 
-                // Grab the highest quality link
-                const bestSource = sourceData.sources.find(s => s.quality === 'auto' || s.quality === '1080p') || sourceData.sources[0];
+                // Step D: Grab the highest quality link
+                const bestSource = streamData.sources.find(s => s.quality === '1080p' || s.quality === 'auto' || s.quality === 'default') || streamData.sources[0];
 
                 // Fire up the player
                 initializePlayer(bestSource.url);
